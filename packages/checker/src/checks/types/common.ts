@@ -21,13 +21,13 @@ import {
   type Type,
   type TypeCategory,
 } from "../../types.js";
-import { FEATHER_DOCS, type CheckMeta, type Preset, type Severity } from "../api.js";
+import { FEATHER_DOCS, type CheckMeta } from "../api.js";
 import { unparen } from "../util.js";
 
 const docs = (code: string) => `${FEATHER_DOCS}#:~:text=${code}`;
 
-export function typeMeta(code: string, name: string, description: string, preset: Preset, defaultSeverity: Severity = "warning"): CheckMeta {
-  return { code, name, description, category: "type", defaultSeverity, preset, feather: true, docs: docs(code) };
+export function typeMeta(code: string, name: string, description: string): CheckMeta {
+  return { code, name, description, category: "type", feather: true, docs: docs(code) };
 }
 
 /** Struct names the checker actually knows (constructors, spec structures, `global`). */

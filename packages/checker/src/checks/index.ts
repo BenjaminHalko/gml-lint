@@ -6,10 +6,11 @@ import { stateChecks } from "./state/index.js";
 import { typeChecks } from "./types/index.js";
 
 export * from "./api.js";
-export * from "./config.js";
 export { Suppressions } from "./directives.js";
-export { applyFixes, fileIdentity, makeContext, PARSE_ERROR_CODE, runChecks } from "./runner.js";
-export type { RunOptions, RunResult } from "./runner.js";
+export { globToRegExp } from "./glob.js";
+export type { FeatherProfile, SuppressionOptions } from "./directives.js";
+export { applyFixes, makeContext, PARSE_ERROR_CODE, runChecks } from "./runner.js";
+export type { RunOptions } from "./runner.js";
 export * as checkUtil from "./util.js";
 export { coreChecks, semanticChecks, stateChecks, syntaxChecks, typeChecks };
 

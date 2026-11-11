@@ -1,7 +1,8 @@
-import { allChecks, presetIncludes, type Preset } from "@gml-lint/checker";
+import { configRules } from "./configs.js";
 import { gmlLanguage } from "./language.js";
 import { rules, ruleIdsByCode } from "./rules.js";
 
+export { assetFolderIgnores } from "./ignores.js";
 export { GmlLanguage, GmlSourceCode, gmlLanguage } from "./language.js";
 export type { GmlParserServices } from "./language.js";
 export { getParserServices, checkToRule, rules, ruleIdsByCode } from "./rules.js";
@@ -9,18 +10,7 @@ export type { GmlRule } from "./rules.js";
 export { clearPrograms } from "./programs.js";
 export type { GmlLanguageOptions } from "./programs.js";
 
-const VERSION = "0.1.0";
-
-type RuleLevel = "error" | "warn";
-
-function rulesFor(preset: Preset): Record<string, RuleLevel> {
-  const out: Record<string, RuleLevel> = {};
-  for (const c of allChecks) {
-    if (!presetIncludes(preset, c.meta.preset)) continue;
-    out[`gml/${c.meta.name}`] = c.meta.defaultSeverity === "error" ? "error" : "warn";
-  }
-  return out;
-}
+type ConfigName = keyof typeof configRules;
 
 interface FlatConfig {
   name: string;
@@ -28,25 +18,25 @@ interface FlatConfig {
   plugins: Record<string, unknown>;
   language: string;
   languageOptions: Record<string, unknown>;
-  rules: Record<string, RuleLevel>;
+  rules: Record<string, "warn" | "error">;
 }
 
 const plugin = {
-  meta: { name: "eslint-plugin-gml", version: VERSION, namespace: "gml" },
+  meta: { name: "eslint-plugin-gml", version: "0.1.0", namespace: "gml" },
   languages: { gml: gmlLanguage },
   rules,
-  configs: {} as Record<Preset, FlatConfig>,
+  configs: {} as Record<ConfigName, FlatConfig>,
   ruleIdsByCode,
 };
 
-for (const preset of ["syntax", "recommended", "strict", "all"] as const) {
-  plugin.configs[preset] = {
-    name: `gml/${preset}`,
+for (const name of Object.keys(configRules) as ConfigName[]) {
+  plugin.configs[name] = {
+    name: `gml/${name}`,
     files: ["**/*.gml"],
     plugins: { gml: plugin },
     language: "gml/gml",
     languageOptions: { project: "auto" },
-    rules: rulesFor(preset),
+    rules: configRules[name],
   };
 }
 

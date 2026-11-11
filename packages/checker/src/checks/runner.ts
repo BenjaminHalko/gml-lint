@@ -1,105 +1,47 @@
+/**
+ * Runs checks outside ESLint (tests, scripts). ESLint users get the same
+ * checks as rules from eslint-plugin-gml.
+ */
+
 import type * as AST from "@gml-lint/parser";
 import { childNodes } from "@gml-lint/parser";
 import type { Program, SourceFile } from "../program.js";
-import type { Check, CheckContext, Diagnostic, Edit, Preset, Severity, Visitor } from "./api.js";
-import { enabledChecks, matchesFile, type FileIdentity, type GmlintConfig } from "./config.js";
+import type { Check, CheckContext, Diagnostic, Edit, Visitor } from "./api.js";
 import { Suppressions } from "./directives.js";
-
-export interface RunOptions {
-  checks: readonly Check[];
-  config?: GmlintConfig;
-  /** Restrict to these files (default: all program files). */
-  files?: readonly SourceFile[];
-  /** Called when a check throws; default records an internal-error diagnostic. */
-  onCheckError?: (check: Check, file: SourceFile, error: unknown) => void;
-}
-
-export interface RunResult {
-  diagnostics: Diagnostic[];
-  filesChecked: number;
-  filesIgnored: number;
-  /** Milliseconds spent per check code. */
-  timings: Map<string, number>;
-}
 
 export const PARSE_ERROR_CODE = "GM1100";
 
-export function fileIdentity(program: Program, file: SourceFile): FileIdentity {
-  const rel = file.gml?.relativePath ?? file.path;
-  const owner = file.gml?.owner ?? null;
-  const res = owner ? program.project?.resources.get(owner) : undefined;
-  const folderPath = owner ? `${res?.folder ? res.folder + "/" : ""}${owner}` : null;
-  return { relativePath: rel, folderPath };
+export interface RunOptions {
+  checks: readonly Check[];
+  /** Restrict to these files (default: every program file). */
+  files?: readonly SourceFile[];
+  /** Options per check code or name. */
+  options?: Record<string, Record<string, unknown>>;
 }
 
-export function runChecks(program: Program, options: RunOptions): RunResult {
-  const config = options.config ?? {};
+/** Runs checks and returns their diagnostics, minus those suppressed by Feather directives. */
+export function runChecks(program: Program, { checks, files, options = {} }: RunOptions): Diagnostic[] {
   const checker = program.getChecker();
-  const presetByCode = new Map<string, Preset>(options.checks.map((c) => [c.meta.code, c.meta.preset]));
-  const suppressions = new Suppressions(program, {
-    featherDirectives: config.featherDirectives ?? true,
-    presetOf: (code) => presetByCode.get(code) ?? null,
-  });
-  const timings = new Map<string, number>();
-  const diagnostics: Diagnostic[] = [];
-  let filesChecked = 0;
-  let filesIgnored = 0;
-
-  for (const file of options.files ?? program.getSourceFiles()) {
-    const id = fileIdentity(program, file);
-    if (matchesFile(config.ignore, id)) {
-      filesIgnored++;
-      continue;
-    }
-    filesChecked++;
-    const fileDiagnostics: Diagnostic[] = [];
-    const enabled = enabledChecks(options.checks, config, id);
-    const parseCheck = enabled.find((e) => e.check.meta.code === PARSE_ERROR_CODE);
-    if (parseCheck) {
-      for (const e of file.parseErrors) {
-        fileDiagnostics.push({
-          code: PARSE_ERROR_CODE,
-          check: parseCheck.check.meta.name,
-          message: e.message,
-          severity: parseCheck.severity,
-          file: file.path,
-          range: e.range,
-          loc: e.loc,
-        });
-      }
-    }
+  const suppressions = new Suppressions(program);
+  const out: Diagnostic[] = [];
+  for (const file of files ?? program.getSourceFiles()) {
+    const sink: Diagnostic[] = [];
     const fc = checker.forFile(file);
     const visitors: Array<{ check: Check; visitor: Visitor }> = [];
-    for (const { check, severity, options: checkOptions } of enabled) {
-      if (check.meta.code === PARSE_ERROR_CODE) continue;
-      const context = makeContext(program, file, fc, check, severity, checkOptions, fileDiagnostics);
-      try {
-        visitors.push({ check, visitor: check.create(context) });
-      } catch (err) {
-        reportCrash(options, check, file, err, fileDiagnostics);
+    for (const check of checks) {
+      if (check.meta.code === PARSE_ERROR_CODE) {
+        for (const e of file.parseErrors) {
+          sink.push({ code: check.meta.code, check: check.meta.name, message: e.message, file: file.path, range: e.range, loc: e.loc });
+        }
+        continue;
       }
+      const opts = options[check.meta.code] ?? options[check.meta.name] ?? {};
+      visitors.push({ check, visitor: check.create(makeContext(program, file, fc, check, opts, sink)) });
     }
-    walk(file.ast, visitors, timings, (check, err) => reportCrash(options, check, file, err, fileDiagnostics));
-    diagnostics.push(...suppressions.filter(file, fileDiagnostics));
+    walk(file.ast, visitors);
+    out.push(...suppressions.filter(file, sink));
   }
-  diagnostics.sort((a, b) => (a.file === b.file ? a.range[0] - b.range[0] : a.file < b.file ? -1 : 1));
-  return { diagnostics, filesChecked, filesIgnored, timings };
-}
-
-function reportCrash(options: RunOptions, check: Check, file: SourceFile, err: unknown, out: Diagnostic[]): void {
-  if (options.onCheckError) {
-    options.onCheckError(check, file, err);
-    return;
-  }
-  out.push({
-    code: "GT9999",
-    check: "internal-error",
-    message: `Check ${check.meta.code} (${check.meta.name}) crashed: ${(err as Error)?.message ?? String(err)}`,
-    severity: "error",
-    file: file.path,
-    range: [0, 0],
-    loc: { start: { line: 1, column: 0 }, end: { line: 1, column: 0 } },
-  });
+  return out.sort((a, b) => (a.file === b.file ? a.range[0] - b.range[0] : a.file < b.file ? -1 : 1));
 }
 
 export function makeContext(
@@ -107,7 +49,6 @@ export function makeContext(
   file: SourceFile,
   fc: CheckContext["fc"],
   check: Check,
-  severity: Severity,
   options: Record<string, unknown>,
   sink: Diagnostic[],
 ): CheckContext {
@@ -123,17 +64,15 @@ export function makeContext(
     },
     report(d) {
       const range = d.range ?? d.node?.range ?? [0, 0];
-      const fix = d.fix ? (Array.isArray(d.fix) ? d.fix : [d.fix]) : undefined;
       const diagnostic: Diagnostic = {
         code: check.meta.code,
         check: check.meta.name,
         message: d.message,
-        severity,
         file: file.path,
         range: [range[0], range[1]],
         loc: file.lineMap.loc(range),
       };
-      if (fix) diagnostic.fix = fix;
+      if (d.fix) diagnostic.fix = Array.isArray(d.fix) ? d.fix : [d.fix];
       if (d.suggestions) {
         diagnostic.suggestions = d.suggestions.map((s) => ({ message: s.message, edits: Array.isArray(s.edits) ? s.edits : [s.edits] }));
       }
@@ -145,42 +84,23 @@ export function makeContext(
 
 type Handler = (node: AST.Node, parent: AST.Node | null) => void;
 
-function walk(
-  root: AST.Program,
-  visitors: Array<{ check: Check; visitor: Visitor }>,
-  timings: Map<string, number>,
-  onError: (check: Check, err: unknown) => void,
-): void {
-  const enter = new Map<string, Array<{ check: Check; fn: Handler }>>();
-  const exit = new Map<string, Array<{ check: Check; fn: Handler }>>();
-  for (const { check, visitor } of visitors) {
+function walk(root: AST.Program, visitors: Array<{ check: Check; visitor: Visitor }>): void {
+  const enter = new Map<string, Handler[]>();
+  const exit = new Map<string, Handler[]>();
+  for (const { visitor } of visitors) {
     for (const [key, fn] of Object.entries(visitor)) {
       if (typeof fn !== "function") continue;
       const isExit = key.endsWith(":exit");
-      const type = isExit ? key.slice(0, -5) : key;
       const map = isExit ? exit : enter;
-      let list = map.get(type);
-      if (!list) map.set(type, (list = []));
-      list.push({ check, fn: fn as Handler });
+      const type = isExit ? key.slice(0, -5) : key;
+      map.set(type, [...(map.get(type) ?? []), fn as Handler]);
     }
   }
   if (enter.size === 0 && exit.size === 0) return;
-  const call = (list: Array<{ check: Check; fn: Handler }> | undefined, node: AST.Node, parent: AST.Node | null): void => {
-    if (!list) return;
-    for (const { check, fn } of list) {
-      const t0 = performance.now();
-      try {
-        fn(node, parent);
-      } catch (err) {
-        onError(check, err);
-      }
-      timings.set(check.meta.code, (timings.get(check.meta.code) ?? 0) + performance.now() - t0);
-    }
-  };
   const visit = (node: AST.Node, parent: AST.Node | null): void => {
-    call(enter.get(node.type), node, parent);
+    for (const fn of enter.get(node.type) ?? []) fn(node, parent);
     for (const child of childNodes(node)) visit(child, node);
-    call(exit.get(node.type), node, parent);
+    for (const fn of exit.get(node.type) ?? []) fn(node, parent);
   };
   visit(root, null);
 }
@@ -196,20 +116,17 @@ export function applyFixes(text: string, diagnostics: readonly Diagnostic[]): { 
     .sort((a, b) => a.start - b.start || a.end - b.end);
   let out = "";
   let cursor = 0;
-  let lastEnd = -1;
   let applied = 0;
   let remaining = 0;
   for (const f of fixes) {
-    if (f.start < lastEnd || f.start < cursor) {
+    if (f.start < cursor) {
       remaining++;
       continue;
     }
-    const edits = [...f.d.fix].sort((a, b) => a.range[0] - b.range[0]);
-    for (const e of edits) {
+    for (const e of [...f.d.fix].sort((a, b) => a.range[0] - b.range[0])) {
       out += text.slice(cursor, e.range[0]) + e.text;
       cursor = e.range[1];
     }
-    lastEnd = f.end;
     applied++;
   }
   out += text.slice(cursor);

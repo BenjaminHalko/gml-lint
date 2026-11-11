@@ -97,12 +97,12 @@ function argumentCheck(ctx: CheckContext, code: "GM1029" | "GM1041") {
 }
 
 export const GM1029 = defineCheck({
-  meta: typeMeta("GM1029", "dangerous-implicit-cast", "Potentially dangerous or unintended implicit cast.", "strict"),
+  meta: typeMeta("GM1029", "dangerous-implicit-cast", "Potentially dangerous or unintended implicit cast."),
   create: (ctx) => argumentCheck(ctx, "GM1029"),
 });
 
 export const GM1041 = defineCheck({
-  meta: typeMeta("GM1041", "argument-type-mismatch", "The type appears where a different type is expected.", "recommended"),
+  meta: typeMeta("GM1041", "argument-type-mismatch", "The type appears where a different type is expected."),
   create: (ctx) => argumentCheck(ctx, "GM1041"),
 });
 
@@ -111,7 +111,7 @@ export const GM1041 = defineCheck({
 // ---------------------------------------------------------------------------
 
 export const GM1044 = defineCheck({
-  meta: typeMeta("GM1044", "wrong-constant-group", "Constant is expected to be one of a group.", "recommended"),
+  meta: typeMeta("GM1044", "wrong-constant-group", "Constant is expected to be one of a group."),
   create(ctx) {
     if (!ctx.checker.spec) return {};
     const check = (node: AST.CallExpression | AST.NewExpression) => {
@@ -144,7 +144,7 @@ export const GM1044 = defineCheck({
 const NOT_CALLABLE = new Set<Type["kind"]>(["real", "int64", "string", "array", "struct", "bool", "undefined"]);
 
 export const GM1060 = defineCheck({
-  meta: typeMeta("GM1060", "call-non-function", "Dangerous call to variable that is not a function.", "recommended"),
+  meta: typeMeta("GM1060", "call-non-function", "Dangerous call to variable that is not a function."),
   create(ctx) {
     return {
       CallExpression(node) {

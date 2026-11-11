@@ -27,15 +27,6 @@ importers:
         specifier: workspace:*
         version: link:../project
 
-  packages/cli:
-    dependencies:
-      '@gml-lint/checker':
-        specifier: workspace:*
-        version: link:../checker
-      '@gml-lint/project':
-        specifier: workspace:*
-        version: link:../project
-
   packages/eslint-plugin:
     dependencies:
       '@eslint/plugin-kit':

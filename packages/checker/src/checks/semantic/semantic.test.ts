@@ -197,7 +197,7 @@ describe("GM2017 naming", () => {
     const files = { "objects/obj_a/Create_0.gml": "moveSpeed = 1;\nmoveSpeed = 2;\nhp = 1;", "scripts/s/s.gml": "function doThing(_a) { var myVar = 1; }" };
     expect(messages(diagnose(GM2017, files)).filter((m) => m.includes("move"))).toEqual(["Inconsistent naming. Recommended name is 'move_speed'."]);
     const d = diagnose(GM2017, files, {
-      config: { rules: { GM2017: ["suggestion", { instanceVariable: "lowerCamelCase", function: "lowerCamelCase", localVariable: "^[a-z][A-Za-z]*$", ignore: ["hp"] }] } },
+      options: { GM2017: { instanceVariable: "lowerCamelCase", function: "lowerCamelCase", localVariable: "^[a-z][A-Za-z]*$", ignore: ["hp"] } },
     });
     expect(d).toEqual([]);
   });

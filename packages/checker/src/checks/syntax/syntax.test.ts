@@ -14,8 +14,8 @@ const texts = (d: Array<{ text: string }>) => d.map((x) => x.text);
 
 function fix(check: Check, text: string, path = S): string {
   const program = createTestProgram({ [path]: text });
-  const res = runChecks(program, { checks: [check], config: { preset: "syntax", rules: { [check.meta.code]: check.meta.defaultSeverity } } });
-  return applyFixes(text, res.diagnostics).text;
+  const res = runChecks(program, { checks: [check] });
+  return applyFixes(text, res).text;
 }
 
 describe("syntaxChecks", () => {

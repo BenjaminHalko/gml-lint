@@ -35,8 +35,6 @@ function stateCheck(code: string, name: string, description: string, opts: { all
       name,
       description,
       category: "state",
-      defaultSeverity: "warning",
-      preset: "recommended",
       feather: true,
       docs: docs(code),
     },

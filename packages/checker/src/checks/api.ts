@@ -1,27 +1,14 @@
 /**
- * Check API. A check is the gml-lint equivalent of an ESLint rule: metadata
- * plus a `create` function returning a visitor. The same checks run in the
- * `gmlc` CLI (via `runChecks`) and in eslint-plugin-gml (each check becomes an
- * ESLint rule), so visitor keys are node types exactly as in ESLint, with
- * optional `:exit` suffixes.
+ * Check API. A check is metadata plus a `create` function returning a
+ * visitor; eslint-plugin-gml turns each one into an ESLint rule, so visitor
+ * keys are node types as in ESLint, with optional `:exit` suffixes.
  */
 
 import type * as AST from "@gml-lint/parser";
 import type { Checker, FileChecker } from "../checker.js";
 import type { Program, SourceFile } from "../program.js";
 
-export type Severity = "error" | "warning" | "suggestion";
-export type SeveritySetting = Severity | "off";
 export type CheckCategory = "syntax" | "semantic" | "type" | "state" | "style";
-
-/**
- * Presets, mirroring Feather's profiles:
- *  - syntax:      things the GameMaker compiler rejects
- *  - recommended: Feather's "All" profile without Strict Type mode
- *  - strict:      recommended + Strict Type mode rules
- *  - all:         everything, including opinionated style rules (naming)
- */
-export type Preset = "syntax" | "recommended" | "strict" | "all";
 
 export interface Edit {
   range: AST.Range;
@@ -35,12 +22,11 @@ export interface RelatedLocation {
 }
 
 export interface Diagnostic {
-  /** Feather code (GM1013) or gml-lint code (GT0001). */
+  /** Check code, e.g. GM1013. */
   code: string;
   /** Kebab-case check name. */
   check: string;
   message: string;
-  severity: Severity;
   /** Absolute path of the file. */
   file: string;
   range: AST.Range;
@@ -53,16 +39,13 @@ export interface Diagnostic {
 }
 
 export interface CheckMeta {
-  /** Feather code (GMxxxx) or gml-lint code (GTxxxx). */
+  /** Feather code (GMxxxx), or a project code for plugin checks. */
   code: string;
   /** Kebab-case name, used as the ESLint rule name. */
   name: string;
   /** One-line description (Feather's message title for GM rules). */
   description: string;
   category: CheckCategory;
-  defaultSeverity: Severity;
-  /** Lowest preset that enables the check (higher presets include lower ones). */
-  preset: Preset;
   /** Implements a documented Feather rule. */
   feather: boolean;
   /** Has an automatic fix. */
@@ -108,11 +91,6 @@ export interface Check {
   create(context: CheckContext): Visitor;
 }
 
-/** A check from a config plugin: only `code` and `name` are required. */
-export interface ProjectCheck {
-  meta: Pick<CheckMeta, "code" | "name"> & Partial<CheckMeta>;
-  create(context: CheckContext): Visitor;
-}
 
 export const FEATHER_DOCS = "https://manual.gamemaker.io/monthly/en/The_Asset_Editors/Code_Editor_Properties/Feather_Messages.htm";
 

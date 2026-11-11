@@ -1,13 +1,5 @@
 /**
- * Suppression comments.
- *
- * gml-lint (ESLint-style):
- *   // gmlint-disable [codes]            until gmlint-enable / end of file
- *   // gmlint-enable [codes]
- *   // gmlint-disable-next-line [codes]
- *   // gmlint-disable-line [codes]       (trailing comment)
- *
- * Feather (https://manual.gamemaker.io/.../Feather_Directives.htm):
+ * Feather directives (https://manual.gamemaker.io/.../Feather_Directives.htm):
  *   // Feather ignore|disable [once] GM1010[, GM...]|all [in PATH]
  *   // Feather restore|enable GM1010|all [in PATH]
  *   // Feather use none|syntax-errors|type-errors|all [in PATH]
@@ -19,9 +11,11 @@
  */
 
 import type { Program, SourceFile } from "../program.js";
-import type { Diagnostic, Preset } from "./api.js";
-import { presetIncludes } from "./config.js";
+import type { Diagnostic } from "./api.js";
 import { globToRegExp } from "./glob.js";
+
+/** Feather profile set by `// Feather use <profile>`. */
+export type FeatherProfile = "none" | "syntax-errors" | "type-errors" | "all";
 
 type CodeSet = "all" | Set<string>;
 
@@ -29,17 +23,11 @@ interface Event {
   offset: number;
   action: "disable" | "enable" | "once" | "profile";
   codes: CodeSet;
-  profile?: Preset | "none";
-}
-
-interface LineRule {
-  line: number;
-  codes: CodeSet;
+  profile?: FeatherProfile;
 }
 
 interface FileDirectives {
   events: Event[];
-  lines: LineRule[];
 }
 
 interface PathDirective {
@@ -48,7 +36,6 @@ interface PathDirective {
   event: Omit<Event, "offset">;
 }
 
-const GMLINT_RE = /^\s*gmlint-(disable-next-line|disable-line|disable|enable)\b(.*)$/s;
 const FEATHER_RE = /^\s*feather\s+(ignore|disable|restore|enable|use)\b(.*)$/is;
 
 function parseCodes(text: string): CodeSet {
@@ -59,11 +46,11 @@ function parseCodes(text: string): CodeSet {
   return codes;
 }
 
-function profileOf(text: string): Preset | "none" | null {
+function profileOf(text: string): FeatherProfile | null {
   const t = text.trim().toLowerCase();
   if (t.startsWith("none")) return "none";
-  if (t.startsWith("syntax")) return "syntax";
-  if (t.startsWith("type")) return "strict";
+  if (t.startsWith("syntax")) return "syntax-errors";
+  if (t.startsWith("type")) return "type-errors";
   if (t.startsWith("all")) return "all";
   return null;
 }
@@ -73,31 +60,10 @@ function splitIn(rest: string): { body: string; path: string | null } {
   return m ? { body: m[1]!, path: m[2]! } : { body: rest, path: null };
 }
 
-function parseFile(file: SourceFile, featherEnabled: boolean, pathDirectives: PathDirective[], folderOf: (f: SourceFile) => string | null): FileDirectives {
+function parseFile(file: SourceFile, pathDirectives: PathDirective[], folderOf: (f: SourceFile) => string | null): FileDirectives {
   const events: Event[] = [];
-  const lines: LineRule[] = [];
   for (const c of file.ast.comments) {
     const value = c.type === "Line" ? c.value.replace(/^\/+/, "") : c.value;
-    const g = GMLINT_RE.exec(value);
-    if (g) {
-      const codes = parseCodes(g[2] ?? "");
-      switch (g[1]) {
-        case "disable":
-          events.push({ offset: c.range[0], action: "disable", codes });
-          break;
-        case "enable":
-          events.push({ offset: c.range[0], action: "enable", codes });
-          break;
-        case "disable-next-line":
-          lines.push({ line: c.loc.end.line + 1, codes });
-          break;
-        case "disable-line":
-          lines.push({ line: c.loc.start.line, codes });
-          break;
-      }
-      continue;
-    }
-    if (!featherEnabled) continue;
     const f = FEATHER_RE.exec(value);
     if (!f) continue;
     const verb = f[1]!.toLowerCase();
@@ -119,7 +85,7 @@ function parseFile(file: SourceFile, featherEnabled: boolean, pathDirectives: Pa
       events.push({ offset: c.range[0], ...event });
     }
   }
-  return { events, lines };
+  return { events };
 }
 
 function assetPathPattern(path: string, currentFolder: string | null): RegExp {
@@ -137,9 +103,8 @@ function codeMatches(set: CodeSet, d: Diagnostic): boolean {
 }
 
 export interface SuppressionOptions {
-  featherDirectives?: boolean;
-  /** Lowest preset that enables a code, for `// Feather use <profile>`. */
-  presetOf?: (code: string) => Preset | null;
+  /** Whether a profile set by `// Feather use` includes a code. Default: every profile but "none" includes everything. */
+  profileIncludes?: (profile: FeatherProfile, code: string) => boolean;
 }
 
 /**
@@ -152,22 +117,20 @@ export class Suppressions {
   private readonly pathDirectives: PathDirective[] = [];
   private readonly program: Program;
   private readonly options: SuppressionOptions;
-  private readonly feather: boolean;
 
   constructor(program: Program, options: SuppressionOptions = {}) {
     this.program = program;
     this.options = options;
-    this.feather = options.featherDirectives ?? true;
     // `in PATH` directives can come from any file, so scan everything once.
     for (const f of program.getSourceFiles()) {
-      this.perFile.set(f, parseFile(f, this.feather, this.pathDirectives, (sf) => this.folderPath(sf, false)));
+      this.perFile.set(f, parseFile(f, this.pathDirectives, (sf) => this.folderPath(sf, false)));
     }
   }
 
   private directivesOf(file: SourceFile): FileDirectives {
     let fd = this.perFile.get(file);
     if (!fd) {
-      fd = parseFile(file, this.feather, [], (sf) => this.folderPath(sf, false));
+      fd = parseFile(file, [], (sf) => this.folderPath(sf, false));
       this.perFile.set(file, fd);
     }
     return fd;
@@ -193,7 +156,6 @@ export class Suppressions {
     const onceUsed = new Set<Event>();
     const out: Diagnostic[] = [];
     for (const d of sorted) {
-      if (fd.lines.some((l) => l.line === d.loc.start.line && codeMatches(l.codes, d))) continue;
       let suppressed = false;
       for (const e of events) {
         if (e.offset > d.range[0]) break;
@@ -205,10 +167,8 @@ export class Suppressions {
             if (codeMatches(e.codes, d)) suppressed = false;
             break;
           case "profile": {
-            const preset = this.options.presetOf?.(d.code) ?? null;
-            if (e.profile === "none") suppressed = true;
-            else if (preset && e.profile) suppressed = !presetIncludes(e.profile, preset);
-            else suppressed = false;
+            const profile = e.profile ?? "all";
+            suppressed = !(this.options.profileIncludes?.(profile, d.code) ?? profile !== "none");
             break;
           }
           case "once":

@@ -10,7 +10,6 @@
 import type { EventInfo, GmlFile, ObjectResource, Project, Resource, ResourceType, RoomResource, ScriptResource } from "@gml-lint/project";
 import { eventFromFileName } from "@gml-lint/project";
 import type { Check, Diagnostic } from "./checks/api.js";
-import type { GmlintConfig } from "./checks/config.js";
 import { runChecks } from "./checks/runner.js";
 import { Program } from "./program.js";
 import { createEmptySpec, loadSpec, parseSpecXml, type GmlSpec } from "./spec/index.js";
@@ -194,19 +193,15 @@ export interface SimpleDiagnostic {
   text: string;
 }
 
-/** Runs checks (all enabled, at their default severity) and returns simplified diagnostics. */
+/** Runs checks and returns simplified diagnostics. */
 export function diagnose(
   checks: Check | readonly Check[],
   input: TestProject | Record<string, string>,
-  options: { spec?: GmlSpec | null; config?: GmlintConfig } = {},
+  options: { spec?: GmlSpec | null; options?: Record<string, Record<string, unknown>> } = {},
 ): SimpleDiagnostic[] {
   const program = createTestProgram(input, options.spec === undefined ? {} : { spec: options.spec });
   const list = Array.isArray(checks) ? checks : [checks as Check];
-  const rules: GmlintConfig["rules"] = {};
-  for (const c of list) rules[c.meta.code] = c.meta.defaultSeverity;
-  const config: GmlintConfig = { preset: "syntax", ...options.config, rules: { ...rules, ...options.config?.rules } };
-  const result = runChecks(program, { checks: list, config });
-  return result.diagnostics.map((d) => simplify(program, d));
+  return runChecks(program, { checks: list, options: options.options ?? {} }).map((d) => simplify(program, d));
 }
 
 function simplify(program: Program, d: Diagnostic): SimpleDiagnostic {

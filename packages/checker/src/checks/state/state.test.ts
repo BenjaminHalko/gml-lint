@@ -153,9 +153,9 @@ describe("restore-to-default setters", () => {
   });
   it("supports allowInEvents", () => {
     const code = "draw_set_alpha(0.5);\ndraw_set_halign(fa_center);";
-    const config = { rules: { GM2063: ["warning", { allowInEvents: ["draw begin"] }] as ["warning", Record<string, unknown>] } };
-    expect(codes(diagnose(stateChecks, { "objects/obj_a/Draw_72.gml": code }, { config }))).toEqual(["GM2026@2"]);
-    expect(codes(diagnose(stateChecks, { "objects/obj_a/Draw_0.gml": code }, { config }))).toEqual(["GM2063@1", "GM2026@2"]);
+    const options = { GM2063: { allowInEvents: ["draw begin"] } };
+    expect(codes(diagnose(stateChecks, { "objects/obj_a/Draw_72.gml": code }, { options }))).toEqual(["GM2026@2"]);
+    expect(codes(diagnose(stateChecks, { "objects/obj_a/Draw_0.gml": code }, { options }))).toEqual(["GM2063@1", "GM2026@2"]);
   });
   it("ignores user functions with the same name", () => {
     expect(run("function draw_set_alpha_x() {}\nvar draw_set_alpha = function(a) {};\ndraw_set_alpha(0.5);", "scripts/s/s.gml")).toEqual([]);

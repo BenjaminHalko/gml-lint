@@ -4,7 +4,6 @@
     { "path": "packages/parser" },
     { "path": "packages/project" },
     { "path": "packages/checker" },
-    { "path": "packages/cli" },
     { "path": "packages/eslint-plugin" }
   ]
 }

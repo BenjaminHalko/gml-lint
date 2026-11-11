@@ -137,8 +137,6 @@ export const GM2017 = defineCheck({
       "`ignore` lists exempt names. Defaults: locals _all_lower, parameters/instance variables/functions all_lower, constructors UpperCamelCase, " +
       "macros ALL_UPPER, enums and members ALL_UPPER or UpperCamelCase. Leading/trailing underscores are preserved.",
     category: "style",
-    defaultSeverity: "suggestion",
-    preset: "all",
     feather: true,
     docs: docs("GM2017"),
   },

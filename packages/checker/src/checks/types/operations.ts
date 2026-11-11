@@ -57,7 +57,6 @@ export const GM1009 = defineCheck({
     "GM1009",
     "unexpected-type-operation",
     "Operation between types may result in unexpected behavior or an error during runtime.",
-    "strict",
   ),
   create(ctx) {
     return {
@@ -123,7 +122,7 @@ function cannotOperate(fc: FileChecker, op: string, left: AST.Expression, right:
 }
 
 export const GM1010 = defineCheck({
-  meta: typeMeta("GM1010", "invalid-type-operation", "Cannot perform operation between types.", "strict"),
+  meta: typeMeta("GM1010", "invalid-type-operation", "Cannot perform operation between types."),
   create(ctx) {
     const report = (node: AST.Node, op: string, types: [Type, Type]) =>
       ctx.report({ node, message: `Cannot perform ${op} operation between types '${show(types[0])}' and '${show(types[1])}'.` });
@@ -155,7 +154,6 @@ export const GM1011 = defineCheck({
     "GM1011",
     "implicit-bool-cast",
     "Implicit cast of type to 'Bool' may result in unexpected behavior or an error during runtime.",
-    "strict",
   ),
   create(ctx) {
     const check = (test: AST.Expression | null) => {
@@ -218,7 +216,7 @@ function accessorAccepts(accessor: AST.Accessor, t: Type): boolean {
 }
 
 export const GM1028 = defineCheck({
-  meta: typeMeta("GM1028", "wrong-accessor", "Accessor is intended for a different type.", "strict"),
+  meta: typeMeta("GM1028", "wrong-accessor", "Accessor is intended for a different type."),
   create(ctx) {
     return {
       IndexExpression(node) {
@@ -242,7 +240,7 @@ export const GM1028 = defineCheck({
 // ---------------------------------------------------------------------------
 
 export const GM1063 = defineCheck({
-  meta: typeMeta("GM1063", "ternary-differing-types", "Ternary may yield differing types.", "strict", "suggestion"),
+  meta: typeMeta("GM1063", "ternary-differing-types", "Ternary may yield differing types."),
   create(ctx) {
     return {
       ConditionalExpression(node) {

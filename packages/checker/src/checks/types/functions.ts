@@ -13,7 +13,7 @@ import { compatible, fromMacro, isSure, knownConstantClasses, scopeOfFunction, s
 // ---------------------------------------------------------------------------
 
 export const GM1035 = defineCheck({
-  meta: typeMeta("GM1035", "inconsistent-return-type", "Return type differs from previously established return type.", "strict"),
+  meta: typeMeta("GM1035", "inconsistent-return-type", "Return type differs from previously established return type."),
   create(ctx) {
     const check = (node: AST.FunctionLike) => {
       const scope = scopeOfFunction(ctx.fc, node);
@@ -38,7 +38,7 @@ export const GM1035 = defineCheck({
 // ---------------------------------------------------------------------------
 
 export const GM1042 = defineCheck({
-  meta: typeMeta("GM1042", "jsdoc-param-name", "Parameter name differs from the name specified in jsdoc.", "recommended"),
+  meta: typeMeta("GM1042", "jsdoc-param-name", "Parameter name differs from the name specified in jsdoc."),
   create(ctx) {
     const check = (node: AST.FunctionLike) => {
       const doc = scopeOfFunction(ctx.fc, node)?.doc;
@@ -58,7 +58,7 @@ export const GM1042 = defineCheck({
 // ---------------------------------------------------------------------------
 
 export const GM1045 = defineCheck({
-  meta: typeMeta("GM1045", "jsdoc-type-mismatch", "Type differs from type specified in jsdoc.", "recommended"),
+  meta: typeMeta("GM1045", "jsdoc-type-mismatch", "Type differs from type specified in jsdoc."),
   create(ctx) {
     const c = ctx.checker;
     const mismatch = (value: AST.Expression, expected: Type) => {
@@ -98,7 +98,7 @@ export const GM1045 = defineCheck({
 // ---------------------------------------------------------------------------
 
 export const GM1062 = defineCheck({
-  meta: typeMeta("GM1062", "jsdoc-malformed-type", "Malformed type in jsdoc.", "recommended"),
+  meta: typeMeta("GM1062", "jsdoc-malformed-type", "Malformed type in jsdoc."),
   create(ctx) {
     const c = ctx.checker;
     const constantClasses = knownConstantClasses(c);
@@ -126,7 +126,7 @@ export const GM1062 = defineCheck({
 // ---------------------------------------------------------------------------
 
 export const GM1043 = defineCheck({
-  meta: typeMeta("GM1043", "type-reassignment", "Potentially unintentional type reassignment.", "strict"),
+  meta: typeMeta("GM1043", "type-reassignment", "Potentially unintentional type reassignment."),
   create(ctx) {
     const checkSymbol = (sym: LocalSymbol) => {
       if (sym.values.length < 2) return; // a single assignment cannot change type
