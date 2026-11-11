@@ -1,0 +1,3 @@
+* text=auto eol=lf
+*.gml text eol=crlf
+*.yy text eol=crlf
