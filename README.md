@@ -49,6 +49,32 @@ Exits with 1 if there are errors (or more warnings than `--max-warnings`), 2 on 
 }
 ```
 
+### Project checks
+
+List modules under `plugins` (paths relative to the config file). A module exports checks, objects with `meta` and `create`, as its default or named exports:
+
+```ts
+// lint/no-debug-message.ts
+import type { ProjectCheck } from "@gml-lint/checker";
+
+export default {
+  meta: { code: "DS0001", name: "no-debug-message", description: "No debug output" },
+  create: (ctx) => ({
+    CallExpression(node) {
+      if (node.callee.type === "Identifier" && node.callee.name === "show_debug_message") {
+        ctx.report({ node, message: "Remove debug output." });
+      }
+    },
+  }),
+} satisfies ProjectCheck;
+```
+
+```json
+{ "plugins": ["lint/no-debug-message.ts"] }
+```
+
+`ctx` has the file (`ctx.file.ast`, `ctx.file.docs`), the checker (`ctx.fc.resolve`, `ctx.fc.typeOf`, `ctx.fc.selfAt`) and `ctx.report`. Unless `meta` says otherwise, checks are warnings in the `recommended` preset.
+
 ### Suppressing
 
 ```gml

@@ -108,6 +108,12 @@ export interface Check {
   create(context: CheckContext): Visitor;
 }
 
+/** A check from a config plugin: only `code` and `name` are required. */
+export interface ProjectCheck {
+  meta: Pick<CheckMeta, "code" | "name"> & Partial<CheckMeta>;
+  create(context: CheckContext): Visitor;
+}
+
 export const FEATHER_DOCS = "https://manual.gamemaker.io/monthly/en/The_Asset_Editors/Code_Editor_Properties/Feather_Messages.htm";
 
 /** Helper so check modules get type inference on their visitor. */

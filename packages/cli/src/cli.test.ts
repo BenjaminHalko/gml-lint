@@ -75,6 +75,23 @@ describe("gmlc", () => {
     expect(gh).toMatch(/^::error file=scripts\/s\/s.gml,line=1,col=1/);
   });
 
+  it("loads project checks from config plugins", async () => {
+    const dir = makeProject({ "scripts/s/s.gml": "show_debug_message(1);" });
+    writeFileSync(
+      join(dir, "no-debug.js"),
+      `export default {
+        meta: { code: "XX0001", name: "no-debug-message", description: "No debug output" },
+        create: (ctx) => ({ CallExpression(node) {
+          if (node.callee.type === "Identifier" && node.callee.name === "show_debug_message") ctx.report({ node, message: "Remove debug output." });
+        } }),
+      };`,
+    );
+    writeFileSync(join(dir, "gmlint.config.json"), JSON.stringify({ plugins: ["no-debug.js"] }));
+    const r = await run([dir, "--format", "compact"]);
+    expect(r.out).toBe("scripts/s/s.gml:1:1: warning Remove debug output. [XX0001]\n");
+    expect((await run([dir, "--format", "compact", "--rule", "no-debug-message=off"])).out).toBe("");
+  });
+
   it("lists rules", async () => {
     const r = await run(["rules", "--format", "json"]);
     expect(JSON.parse(r.out).some((m: { code: string }) => m.code === "GM1013")).toBe(true);

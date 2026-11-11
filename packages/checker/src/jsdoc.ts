@@ -28,7 +28,7 @@ export interface DocComment {
   description: string;
   params: DocParam[];
   returns: { typeText: string | null; type: Type | null; description: string; range: Range; typeRange: Range | null } | null;
-  self: { typeText: string; type: Type; range: Range } | null;
+  self: { typeText: string; type: Type; range: Range; typeRange: Range | null } | null;
   pure: boolean;
   deprecated: boolean;
   ignore: boolean;
@@ -119,9 +119,9 @@ export function parseDocBlock(comments: Comment[]): DocComment {
       }
       case "self":
       case "context": {
-        const { typeText, after } = readType(rest, restStart);
+        const { typeText, typeRange, after } = readType(rest, restStart);
         const t = typeText ?? after.trim().split(/\s+/)[0] ?? "";
-        if (t) doc.self = { typeText: t, type: parseSelfType(t), range: c.range };
+        if (t) doc.self = { typeText: t, type: parseSelfType(t), range: c.range, typeRange };
         break;
       }
       case "pure":

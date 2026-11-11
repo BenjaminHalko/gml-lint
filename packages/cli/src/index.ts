@@ -1,10 +1,10 @@
 import {
   allChecks,
   applyFixes,
-  findCheck,
   loadSpec,
   Program,
   runChecks,
+  type Check,
   type Diagnostic,
   type GmlintConfig,
   type GmlSpec,
@@ -15,7 +15,7 @@ import {
 import { loadProject, type Project } from "@gml-lint/project";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { loadConfig } from "./config-file.js";
 import { formatters, summarize, type FormatContext } from "./formatters.js";
@@ -91,10 +91,13 @@ export async function main(argv: string[]): Promise<number> {
   let project: Project;
   let spec: GmlSpec;
   let config: GmlintConfig;
+  let checks: Check[];
   try {
     project = loadProject(resolve(positionals[0] ?? process.cwd()));
     spec = loadSpec(opts.spec);
-    config = loadConfig(opts.config, project.dir).config;
+    const loaded = loadConfig(opts.config, project.dir);
+    config = loaded.config;
+    checks = [...allChecks, ...(await loadPlugins(config.plugins ?? [], loaded.path ? dirname(loaded.path) : project.dir))];
   } catch (err) {
     return fail((err as Error).message);
   }
@@ -107,7 +110,7 @@ export async function main(argv: string[]): Promise<number> {
     const rules: Record<string, RuleSetting> = { ...config.rules };
     for (const r of opts.rule) {
       const m = /^([^=]+)=(off|error|warning|warn|suggestion)$/.exec(r);
-      if (!m || !findCheck(m[1]!)) return fail(`invalid --rule '${r}' (expected <code>=off|error|warning|suggestion)`);
+      if (!m || !checks.some((c) => c.meta.code === m[1]!.toUpperCase() || c.meta.name === m[1]!.replace(/^gml\//, ""))) return fail(`invalid --rule '${r}' (expected <code>=off|error|warning|suggestion)`);
       rules[m[1]!] = (m[2] === "warn" ? "warning" : m[2]) as SeveritySetting;
     }
     config = { ...config, rules };
@@ -118,8 +121,8 @@ export async function main(argv: string[]): Promise<number> {
   if (!formatter) return fail(`unknown format '${formatName}' (expected ${Object.keys(formatters).join(", ")})`);
 
   const program = new Program({ project, spec });
-  let result = runChecks(program, { checks: allChecks, config });
-  if (opts.fix) result = fixAll(program, config, result.diagnostics) ?? result;
+  let result = runChecks(program, { checks, config });
+  if (opts.fix) result = fixAll(program, checks, config, result.diagnostics) ?? result;
 
   const diagnostics = opts.quiet ? result.diagnostics.filter((d) => d.severity === "error") : result.diagnostics;
   const ctx: FormatContext = {
@@ -138,7 +141,7 @@ export async function main(argv: string[]): Promise<number> {
 }
 
 /** Applies fixes and re-checks until nothing changes (at most 10 passes). */
-function fixAll(program: Program, config: GmlintConfig, diagnostics: Diagnostic[]): ReturnType<typeof runChecks> | null {
+function fixAll(program: Program, checks: Check[], config: GmlintConfig, diagnostics: Diagnostic[]): ReturnType<typeof runChecks> | null {
   let result: ReturnType<typeof runChecks> | null = null;
   for (let pass = 0; pass < 10; pass++) {
     const byFile = new Map<string, Diagnostic[]>();
@@ -159,10 +162,36 @@ function fixAll(program: Program, config: GmlintConfig, diagnostics: Diagnostic[
       applied += r.applied;
     }
     if (applied === 0) break;
-    result = runChecks(program, { checks: allChecks, config });
+    result = runChecks(program, { checks, config });
     diagnostics = result.diagnostics;
   }
   return result;
+}
+
+/**
+ * Loads project checks. A plugin module exports ProjectChecks (objects with
+ * `meta` and `create`) as its default export or as named exports, singly or in arrays.
+ */
+async function loadPlugins(paths: string[], baseDir: string): Promise<Check[]> {
+  const seen = new Set<Check>();
+  const out: Check[] = [];
+  for (const p of paths) {
+    const mod = (await import(pathToFileURL(resolve(baseDir, p)).href)) as Record<string, unknown>;
+    const found = Object.values(mod).flatMap((v) => (Array.isArray(v) ? v : [v])).filter(isCheck);
+    if (found.length === 0) throw new Error(`plugin ${p} exports no checks`);
+    for (const c of found) {
+      if (seen.has(c)) continue;
+      seen.add(c);
+      const defaults = { description: c.meta.name, category: "semantic", defaultSeverity: "warning", preset: "recommended", feather: false } as const;
+      out.push({ ...c, meta: { ...defaults, ...c.meta } });
+    }
+  }
+  return out;
+}
+
+function isCheck(v: unknown): v is Check {
+  const c = v as Partial<Check> | null;
+  return !!c && typeof c.create === "function" && typeof c.meta?.code === "string" && typeof c.meta.name === "string";
 }
 
 function listRules(format: string | undefined): number {

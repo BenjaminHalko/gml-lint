@@ -20,6 +20,8 @@ export interface GmlintConfig {
   overrides?: ConfigOverride[];
   /** Honour `// Feather ...` directives (default true). */
   featherDirectives?: boolean;
+  /** Modules with project-specific checks, relative to the config file. */
+  plugins?: string[];
 }
 
 const PRESET_ORDER: readonly Preset[] = ["syntax", "recommended", "strict", "all"];
