@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc -b",
+    "release:pack": "pnpm build && pnpm --dir packages/eslint-plugin bundle && pnpm --dir packages/eslint-plugin pack",
     "test": "vitest run",
     "test:watch": "vitest"
   },

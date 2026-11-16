@@ -3,28 +3,32 @@
   "version": "0.1.0",
   "description": "ESLint plugin for GML",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./bundle/index.js",
+  "types": "./bundle/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./bundle/index.d.ts",
+      "default": "./bundle/index.js"
     }
   },
-  "files": ["dist"],
+  "files": ["bundle"],
   "license": "MIT",
   "keywords": ["eslint", "eslintplugin", "gamemaker", "gml"],
+  "scripts": {
+    "bundle": "node scripts/bundle.mjs"
+  },
   "peerDependencies": {
     "eslint": ">=9.7.0"
   },
   "dependencies": {
-    "@eslint/plugin-kit": "^0.7.3",
-    "@gml-lint/checker": "workspace:*",
-    "@gml-lint/parser": "workspace:*",
-    "@gml-lint/project": "workspace:*"
+    "@eslint/plugin-kit": "^0.7.3"
   },
   "devDependencies": {
     "@eslint/core": "^1.2.1",
+    "@gml-lint/checker": "workspace:*",
+    "@gml-lint/parser": "workspace:*",
+    "@gml-lint/project": "workspace:*",
+    "esbuild": "^0.28.2",
     "eslint": "^10.14.0"
   }
 }
