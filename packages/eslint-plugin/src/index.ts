@@ -22,7 +22,7 @@ interface FlatConfig {
 }
 
 const plugin = {
-  meta: { name: "eslint-plugin-gml", version: "0.1.0", namespace: "gml" },
+  meta: { name: "eslint-plugin-gml", version: "0.1.1", namespace: "gml" },
   languages: { gml: gmlLanguage },
   rules,
   configs: {} as Record<ConfigName, FlatConfig>,

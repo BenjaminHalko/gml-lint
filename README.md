@@ -97,5 +97,5 @@ pnpm test
 `pnpm release:pack` bundles the plugin into `packages/eslint-plugin/eslint-plugin-gml-<version>.tgz`. Pushing a `v<version>` tag attaches it to a GitHub release, so projects can install it without cloning this repo:
 
 ```sh
-pnpm add -D https://github.com/BenjaminHalko/gml-lint/releases/download/v0.1.0/eslint-plugin-gml-0.1.0.tgz
+pnpm add -D https://github.com/BenjaminHalko/gml-lint/releases/download/v0.1.1/eslint-plugin-gml-0.1.1.tgz
 ```
