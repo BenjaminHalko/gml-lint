@@ -12,6 +12,8 @@ packages/
 
 ## Setup
 
+Install the `.tgz` from a [release](https://github.com/BenjaminHalko/gml-lint/releases) (see [Development](#development)), then:
+
 ```js
 // eslint.config.js
 import gml, { assetFolderIgnores } from "eslint-plugin-gml";
@@ -90,4 +92,10 @@ The checker only reports what it is sure of. Code where `self` is unknown (scrip
 pnpm install
 pnpm build
 pnpm test
+```
+
+`pnpm release:pack` bundles the plugin into `packages/eslint-plugin/eslint-plugin-gml-<version>.tgz`. Pushing a `v<version>` tag attaches it to a GitHub release, so projects can install it without cloning this repo:
+
+```sh
+pnpm add -D https://github.com/BenjaminHalko/gml-lint/releases/download/v0.1.0/eslint-plugin-gml-0.1.0.tgz
 ```
